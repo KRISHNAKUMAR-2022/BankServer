@@ -3,11 +3,17 @@ const express=require('express')
 // import jsonwebtoken
 const jwt=require('jsonwebtoken')
 
+// import CORS
+const cors=require('cors')
+
 // import dataservice
 const dataService=require('./services/data.service')
 
 // server app create using express
 const app=express()
+
+// cors use in server app
+app.use(cors({origin:'http://localhost:4200'}))
 
 // parse json data
 app.use(express.json())
@@ -41,33 +47,35 @@ const jwtMiddleware=(req,res,next)=>{
 //register api
 app.post('/register',(req,res)=>{
     console.log(req.body);
-    const result=dataService.register(req.body.username,req.body.acno,req.body.password)
-    res.status(result.statusCode).json(result)
+    // asynchronous
+    dataService.register(req.body.username,req.body.acno,req.body.password)
+    .then(result=> res.status(result.statusCode).json(result))
 })
 
 //login api
 app.post('/login',(req,res)=>{
     console.log(req.body);
-    const result=dataService.login(req.body.acno,req.body.pswd)
-    res.status(result.statusCode).json(result)
+     // asynchronous
+    dataService.login(req.body.acno,req.body.pswd)
+    .then(result=>res.status(result.statusCode).json(result))
 })
 
 app.post('/deposit',jwtMiddleware,(req,res)=>{
     console.log(req.body);
-    const result=dataService.deposit(req.body.acno,req.body.pswd,req.body.amt)
-    res.status(result.statusCode).json(result)
+    dataService.deposit(req.body.acno,req.body.pswd,req.body.amt)
+    .then(result=> res.status(result.statusCode).json(result))
 })
 
 app.post('/withdraw',jwtMiddleware,(req,res)=>{
     console.log(req.body);
-    const result=dataService.withdraw(req.body.acno,req.body.pswd,req.body.amt)
-    res.status(result.statusCode).json(result)
+    dataService.withdraw(req.body.acno,req.body.pswd,req.body.amt)
+    .then(result=> res.status(result.statusCode).json(result))
 })
 
 app.post('/transaction',jwtMiddleware,(req,res)=>{
     console.log(req.body);
-    const result=dataService.getTransaction(req.body.acno)
-    res.status(result.statusCode).json(result)
+    dataService.getTransaction(req.body.acno)
+    .then(result=> res.status(result.statusCode).json(result))
 })
 
 

@@ -1,49 +1,59 @@
-const jwt=require('jsonwebtoken')
+const jwt = require('jsonwebtoken')
 
-db = {
-  1000: { "acno": 1000, "username": "anoop", "password": 1000, "balance": 6000, transaction: [] },
-  1001: { "acno": 1001, "username": "sanoop", "password": 1001, "balance": 6000, transaction: [] },
-  1002: { "acno": 1002, "username": "manoop", "password": 1002, "balance": 5000, transaction: [] },
-  1003: { "acno": 1003, "username": "tanoop", "password": 1003, "balance": 5000, transaction: [] },
-}
+// import db
+const db = require('./db')
 
-var register = (username, acno, password) => {
+// db = {
+//   1000: { "acno": 1000, "username": "anoop", "password": 1000, "balance": 6000, transaction: [] },
+//   1001: { "acno": 1001, "username": "sanoop", "password": 1001, "balance": 6000, transaction: [] },
+//   1002: { "acno": 1002, "username": "manoop", "password": 1002, "balance": 5000, transaction: [] },
+//   1003: { "acno": 1003, "username": "tanoop", "password": 1003, "balance": 5000, transaction: [] },
+// }
 
-  if (acno in db) {
-    return {
-      status: false,
-      message: "Already existing user...please log in",
-      statusCode: 401
+const register = (username, acno, password) => {
+  // asynchronomus 
+  return db.User.findOne({
+    acno
+  }).then(user => {
+    if (user) {
+      return {
+        status: false,
+        message: "Already existing user...please log in",
+        statusCode: 401
+      }
     }
-  }
-  else {
-    db[acno] = {
-      acno,
-      username,
-      password,
-      "balance": 0,
-      transaction: []
+    else {
+      const newUser = new db.User({
+        acno,
+        username,
+        password,
+        balance: 0,
+        transaction: []
+      })
+      newUser.save()
+      return {
+        status: true,
+        message: "Registered successfully ",
+        statusCode: 200
+      }
     }
-    return {
-      status: true,
-      message: "Registered successfully ",
-      statusCode: 200
-    }
-  }
+  })
 }
 
 
 const login = (acno, pswd) => {
 
-  if (acno in db) {
-    if (pswd == db[acno]["password"]) {
-      currentUser = db[acno]["username"]
+  return db.User.findOne({
+    acno,
+    password: pswd
+  }).then(user => {
+    if (user) {
+      currentUser = user.username
       currentAcno = acno
-      token=jwt.sign({
+      token = jwt.sign({
         // store account no inside token
-        currentAcno:acno
-      },'supersecretkey12345')
-
+        currentAcno: acno
+      }, 'supersecretkey12345')
       return {
         status: true,
         message: "Login successful ",
@@ -56,68 +66,62 @@ const login = (acno, pswd) => {
     else {
       return {
         status: false,
-        message: "incorrect passwod",
+        message: "Incorrect account number or password",
         statusCode: 401
       }
     }
-  }
-  else {
-    return {
-      status: false,
-      message: "user don't exist !",
-      statusCode: 401
-    }
-  }
+  })
 }
 
 
+
 const deposit = (acno, pswd, amt) => {
-  // to convert sring to number=> use parseInt()
   var amount = parseInt(amt)
-  if (acno in db) {
-    if (pswd == db[acno]["password"]) {
-      db[acno]["balance"] += amount
-      db[acno].transaction.push({
+  return db.User.findOne({
+    acno,
+    password: pswd
+  }).then(user => {
+    if (user) {
+      user.balance += amount
+      user.transaction.push({
         type: "CREDIT",
         amount: amount
       })
+      user.save()
       return {
         status: true,
-        message: amount + " Deposited successfully...New balance is " + db[acno]["balance"],
+        message: amount + " Deposited successfully...New balance is " + user.balance,
         statusCode: 200
       }
     }
     else {
       return {
         status: false,
-        message: "Incorrect Password",
+        message: "Invalid account number or password",
         statusCode: 401
       }
     }
-  }
-  else {
-    return {
-      status: false,
-      message: "User don't exist !",
-      statusCode: 401
-    }
-  }
+  })
 }
 
 const withdraw = (acno, pswd, amt) => {
   // to convert sring to number=> use parseInt()
   var amount = parseInt(amt)
-  if (acno in db) {
-    if (pswd == db[acno]["password"]) {
-      if (db[acno]["balance"] > amount) {
-        db[acno]["balance"] -= amount
-        db[acno].transaction.push({
+  return db.User.findOne({
+    acno,
+    password: pswd
+  }).then(user => {
+    if (user) {
+      if (user.balance > amount) {
+        user.balance -= amount
+        user.transaction.push({
           type: "DEBIT",
           amount: amount
         })
+        user.save()
         return {
           status: true,
-          message: amount + " Debited successful...New balance is " + db[acno]["balance"],
+          message: amount + " Debited successful...New balance is " + user.balance,
           statusCode: 200
         }
       }
@@ -132,37 +136,33 @@ const withdraw = (acno, pswd, amt) => {
     else {
       return {
         status: false,
-        message: "Incorrect Password",
+        message: "Invalid account number or password",
         statusCode: 401
       }
     }
-  }
-  else {
-    return {
-      status: false,
-      message: "User don't exist !",
-      statusCode: 401
-    }
-  }
-
+  })
 }
 
-const getTransaction=(acno)=>{
-  if(acno in db)
-  return {
-    status:true,
-    statusCode:200,
-    transaction:db[acno].transaction
-  }
-  else{
-    return {
-      status:false,
-      message:"User does't exist !",
-      statusCode:401,
-    }
-  }
-}
 
+const getTransaction = (acno) => {
+  return db.User.findOne({
+    acno
+  }).then(user => {
+    if (user)
+      return {
+        status: true,
+        statusCode: 200,
+        transaction: user.transaction
+      }
+    else {
+      return {
+        status: false,
+        message: "User does't exist !",
+        statusCode: 401,
+      }
+    }
+  })
+}
 
 //   export
 module.exports = {
